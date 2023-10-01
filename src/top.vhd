@@ -15,11 +15,12 @@ entity based_graphic_card is
 end;
 
 architecture arch of based_graphic_card is
-    signal clk_div2: std_logic := '0';
-    signal clk_div4: std_logic := '0';
+    signal clk_div2: std_logic := '1';
+    signal clk_div4: std_logic := '1';
 
-    signal pxl_line: unsigned (11 downto 0) := to_unsigned(0, 12);
-    signal pxl_row: unsigned (11 downto 0) := to_unsigned(0, 12);
+    signal y: unsigned (11 downto 0) := to_unsigned(0, 12);
+    signal x: unsigned (11 downto 0) := to_unsigned(0, 12);
+    signal active: std_logic := '0';
 
     signal hsync_reg: std_logic := '0';
     signal vsync_reg: std_logic := '0';
@@ -56,10 +57,10 @@ end process divide_clk4;
 horizontal_counter: process(clk_div4)
 begin
     if rising_edge(clk_div4) then
-        if pxl_row = H_TOTAL - 1 then
-            pxl_row <= to_unsigned(0, pxl_row'length);
+        if x = H_TOTAL - 1 then
+            x <= to_unsigned(0, x'length);
         else
-            pxl_row <= pxl_row + 1;
+            x <= x + 1;
         end if;
     end if;
 end process;
@@ -67,10 +68,10 @@ end process;
 vertical_counter: process(clk_div4)
 begin
     if rising_edge(clk_div4) then
-        if pxl_line = V_TOTAL - 1 and pxl_row = H_TOTAL - 1 then
-            pxl_line <= to_unsigned(0, pxl_line'length);
-        else
-            pxl_line <= pxl_line + 1;
+        if y = V_TOTAL - 1 and x = H_TOTAL - 1 then
+            y <= to_unsigned(0, y'length);
+        elsif x = H_TOTAL - 1 then
+            y <= y + 1;
         end if;
     end if;
 end process;
@@ -78,14 +79,14 @@ end process;
 process (clk_div4)
 begin
   if (rising_edge(clk_div4)) then
-    hsync_reg <= '1' when (pxl_row >= (H_FP + H_WIDTH - 1)) and (pxl_row < (H_FP + H_WIDTH + H_PW - 1)) else '0';
+    hsync_reg <= '1' when (x >= H_WIDTH + H_FP and x < H_WIDTH + H_FP + H_PW) else '0';
   end if;
 end process;
 
 process (clk_div4)
 begin
   if (rising_edge(clk_div4)) then
-    vsync_reg <= '1' when (pxl_line >= (V_FP + V_HEIGHT - 1)) and (pxl_line < (V_FP + V_HEIGHT + V_PW - 1)) else '0';
+    vsync_reg <= '1' when (y >= V_HEIGHT + V_FP and y < V_HEIGHT + V_FP + V_PW) else '0';
   end if;
 end process;
 
@@ -96,10 +97,12 @@ dflipflop: process(clk_div4) begin
     end if;
 end process;
 
+active <= '1' when x < H_WIDTH and y < V_HEIGHT else '0';
+
 Hsync <= hsync_reg_q;
 Vsync <= vsync_reg_q;
-vgaBlue <= "0000";
-vgaGreen <= "0000";
-vgaRed <= "0000";
+vgaRed <= (active & active & active & active) and "0000";
+vgaBlue <= (active & active & active & active) and "0000";
+vgaGreen <= (active & active & active & active) and "1111";
         
 end arch;
